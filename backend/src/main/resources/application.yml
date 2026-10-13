@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: online-exam-server
+  profiles:
+    # Activating "local" also activates "dev", and "dev" is the only profile that
+    # seeds demo accounts/questions (see SeedDataConfig / SeedQuestionDataConfig).
+    # Production must start without a profile so no demo credentials are created.
+    group:
+      local: dev
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/online_exam?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    # DB_PASSWORD and JWT_SECRET intentionally have no default value: a missing
+    # secret must abort startup instead of silently falling back to a credential
+    # that is published in this repository.
+    # Local development: copy .env.example to .env, or run with
+    #   mvn spring-boot:run -Dspring-boot.run.profiles=local
+    # which loads the git-ignored application-local.yml.
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 500ms
+      timeout: 500ms
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # Route SQL logging through SLF4J instead of StdOut so statements (which can
+    # contain exam answers and reference solutions) honour the logging config,
+    # stay at DEBUG, and land in the same rolling file as the rest of the log.
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+app:
+  jwt:
+    # No default: see the datasource note above. Generate a fresh value with
+    #   openssl rand -base64 48
+    secret: ${JWT_SECRET}
+    access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:120}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+logging:
+  # Write backend stack traces to both console and a rolling file for local diagnosis.
+  file:
+    name: "${LOG_FILE:logs/online-exam.log}"
+  level:
+    com.example.exam: INFO
+    org.springframework.security: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

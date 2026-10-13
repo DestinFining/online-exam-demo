@@ -1,0 +1,3 @@
+package com.example.exam.statistics;
+import java.math.BigDecimal;import java.util.List;
+public record StudentStatistics(long totalPractice,long correctPractice,long wrongPractice,BigDecimal practiceAccuracy,long wrongQuestionCount,long favoriteCount,long examCount,BigDecimal averageScore,BigDecimal highestScore,List<KnowledgeMetric> knowledgePoints,List<ScoreTrend> scoreTrend){public record KnowledgeMetric(Long knowledgePointId,String knowledgePointName,long attempts,long correct,BigDecimal accuracy){} public record ScoreTrend(Long examAttemptId,Long examId,Integer attemptNo,BigDecimal score) {}}

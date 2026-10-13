@@ -1,0 +1,29 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: online-exam-mysql
+    restart: unless-stopped
+    environment:
+      # Required from the environment / backend/.env — see .env.example.
+      # `:?` makes compose fail fast instead of starting with a known password.
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required - copy .env.example to .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-online_exam}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+
+  redis:
+    image: redis:7.4
+    container_name: online-exam-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:
