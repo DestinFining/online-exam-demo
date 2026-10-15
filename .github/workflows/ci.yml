@@ -1,0 +1,81 @@
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Check formatting
+        working-directory: frontend
+        run: npm run format:check
+
+      - name: Type-check and build frontend
+        working-directory: frontend
+        run: npm run build
+
+  backend:
+    name: Backend - Java 21, MySQL 8.4 and Redis 7.4
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: online_exam_ci_only_password
+          MYSQL_DATABASE: online_exam
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --protocol=TCP -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+          --health-start-period=30s
+
+      redis:
+        image: redis:7.4
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=10s
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Install MySQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes mysql-client
+
+      - name: Initialize CI database schema
+        env:
+          MYSQL_PWD: online_exam_ci_only_password
+        run: |
+          mysql --protocol=TCP --host=127.0.0.1 --port=3306 --user=root \
+            < backend/src/main/resources/schema.sql
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          DB_URL: 'jdbc:mysql://127.0.0.1:3306/online_exam?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true'
+          DB_USERNAME: root
+          # Disposable password for this ephemeral CI database only; never use it in a real environment.
+          DB_PASSWORD: online_exam_ci_only_password
+          # CI-only key; production secrets are not used by this workflow.
+          JWT_SECRET: dGVzdC1vbmx5LWNpLWtleS1ub3QtZm9yLXByb2R1Y3Rpb24tYWNjb3VudHM=
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: '6379'
+        run: mvn --batch-mode --no-transfer-progress test
